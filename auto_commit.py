@@ -28,6 +28,21 @@ def run_command(command, cwd=None):
         return None
 
 
+def send_notification(title, message, subtitle=""):
+    """Send a macOS notification"""
+    script = f'''
+    display notification "{message}" with title "{title}" subtitle "{subtitle}" sound name "default"
+    '''
+    try:
+        subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to send notification: {e}")
+
+
 def main():
     # Get the script directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +52,13 @@ def main():
     
     # Current timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Send starting notification
+    send_notification(
+        "GitHub Auto-Commit",
+        "Starting automated commit process...",
+        timestamp
+    )
     
     # Append to log file
     with open(log_file, "a") as f:
@@ -70,6 +92,13 @@ def main():
     
     print(f"✓ Created commit: {commit_msg}")
     
+    # Send commit notification
+    send_notification(
+        "GitHub Auto-Commit",
+        f"Commit created successfully!",
+        timestamp
+    )
+    
     # Push to remote (if configured)
     remote = run_command("git remote", script_dir)
     if remote:
@@ -77,12 +106,30 @@ def main():
         push_result = run_command("git push origin main", script_dir)
         if push_result is not None:
             print("✓ Successfully pushed to GitHub")
+            # Send success notification
+            send_notification(
+                "GitHub Auto-Commit ✅",
+                "Successfully pushed to GitHub!",
+                f"Green dot added • {timestamp}"
+            )
         else:
             print("⚠ Push failed - please check your remote configuration")
+            # Send failure notification
+            send_notification(
+                "GitHub Auto-Commit ⚠️",
+                "Push failed - check configuration",
+                timestamp
+            )
     else:
         print("⚠ No remote configured. Add one with:")
         print("  git remote add origin <your-repo-url>")
         print("  git push -u origin main")
+        # Send warning notification
+        send_notification(
+            "GitHub Auto-Commit ⚠️",
+            "No remote configured",
+            timestamp
+        )
     
     print("\n✅ Automation complete!")
 
